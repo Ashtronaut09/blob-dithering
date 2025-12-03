@@ -22,8 +22,6 @@
     color: #fff;
     min-width: 200px;
     z-index: 100;
-    max-height: 90vh;
-    overflow-y: auto;
   ">
     <div style="font-weight: 600; margin-bottom: 12px; font-size: 14px;">Controls</div>
 
@@ -71,29 +69,6 @@
       <input type="range" id="evolve" min="0" max="0.2" step="0.005" value="0.1" style="width: 100%; margin-top: 4px;">
     </label>
 
-    <div style="font-weight: 500; margin: 16px 0 8px; font-size: 11px; color: #888; text-transform: uppercase;">Gradient</div>
-
-    <label style="display: block; margin-bottom: 12px;">
-      <span style="display: flex; justify-content: space-between;">
-        Gradient angle <span id="gradientAngleVal">263°</span>
-      </span>
-      <input type="range" id="gradientAngle" min="0" max="360" step="5" value="263" style="width: 100%; margin-top: 4px;">
-    </label>
-
-    <label style="display: block; margin-bottom: 12px;">
-      <span style="display: flex; justify-content: space-between;">
-        Color shift <span id="colorShiftVal">0.00</span>
-      </span>
-      <input type="range" id="colorShift" min="0" max="1" step="0.01" value="0" style="width: 100%; margin-top: 4px;">
-    </label>
-
-    <label style="display: block; margin-bottom: 12px;">
-      <span style="display: flex; justify-content: space-between;">
-        Saturation <span id="saturationVal">1.0</span>
-      </span>
-      <input type="range" id="saturation" min="0" max="2" step="0.1" value="1" style="width: 100%; margin-top: 4px;">
-    </label>
-
     <div style="font-weight: 500; margin: 16px 0 8px; font-size: 11px; color: #888; text-transform: uppercase;">Dither</div>
 
     <label style="display: block; margin-bottom: 12px;">
@@ -115,6 +90,11 @@
         Grey levels <span id="greyLevelsVal">2</span>
       </span>
       <input type="range" id="greyLevels" min="2" max="8" step="1" value="2" style="width: 100%; margin-top: 4px;">
+    </label>
+
+    <label style="display: block; margin-bottom: 12px;">
+      <input type="checkbox" id="invert" style="margin-right: 8px;">
+      Invert colors
     </label>
 
     <div style="font-weight: 500; margin: 16px 0 8px; font-size: 11px; color: #888; text-transform: uppercase;">Mouse</div>
@@ -189,16 +169,6 @@
     const canvas = document.getElementById("canvas");
     const ctx = canvas.getContext("2d");
 
-    // Gradient colors from CSS
-    // Pink/Magenta to Yellow/Gold
-    // Purple to Cyan
-    const gradientColors = [
-      { r: 237, g: 82, b: 142 },   // Pink/Magenta
-      { r: 246, g: 201, b: 98 },   // Yellow/Gold
-      { r: 106, g: 71, b: 205 },   // Purple
-      { r: 105, g: 216, b: 239 }   // Cyan
-    ];
-
     // Default settings
     const defaultSettings = {
       gamma: 3,
@@ -206,13 +176,11 @@
       ditherScale: 0.2,
       cloudDensity: 0.5,
       contrast: 1,
+      invert: false,
       direction: 45,
       cloudScale: 1,
       evolve: 0.1,
       greyLevels: 2,
-      gradientAngle: 263,
-      colorShift: 0,
-      saturation: 1,
       mouseEnabled: true,
       mouseRadius: 150,
       mouseSoftness: 0.5,
@@ -222,7 +190,7 @@
 
     // Load saved defaults or use defaults
     const loadSettings = () => {
-      const saved = localStorage.getItem('cloudDitherGradientSettings');
+      const saved = localStorage.getItem('cloudDitherSettings');
       if (saved) {
         try {
           return { ...defaultSettings, ...JSON.parse(saved) };
@@ -285,13 +253,13 @@
     bindSlider("cloudScale", "cloudScale", "cloudScaleVal");
     bindSlider("cloudDensity", "cloudDensity", "cloudDensityVal", v => v.toFixed(2));
     bindSlider("evolve", "evolve", "evolveVal", v => v.toFixed(3));
-    bindSlider("gradientAngle", "gradientAngle", "gradientAngleVal", v => v + "°");
-    bindSlider("colorShift", "colorShift", "colorShiftVal", v => v.toFixed(2));
-    bindSlider("saturation", "saturation", "saturationVal");
     bindSlider("ditherScale", "ditherScale", "ditherScaleVal", v => v.toFixed(2));
     bindSlider("contrast", "contrast", "contrastVal");
     bindSlider("greyLevels", "greyLevels", "greyLevelsVal", v => Math.floor(v).toString());
 
+    document.getElementById("invert").onchange = (e) => {
+      settings.invert = e.target.checked;
+    };
     document.getElementById("mouseEnabled").onchange = (e) => {
       settings.mouseEnabled = e.target.checked;
     };
@@ -314,18 +282,13 @@
       document.getElementById("cloudDensityVal").textContent = settings.cloudDensity.toFixed(2);
       document.getElementById("evolve").value = settings.evolve;
       document.getElementById("evolveVal").textContent = settings.evolve.toFixed(3);
-      document.getElementById("gradientAngle").value = settings.gradientAngle;
-      document.getElementById("gradientAngleVal").textContent = settings.gradientAngle + "°";
-      document.getElementById("colorShift").value = settings.colorShift;
-      document.getElementById("colorShiftVal").textContent = settings.colorShift.toFixed(2);
-      document.getElementById("saturation").value = settings.saturation;
-      document.getElementById("saturationVal").textContent = settings.saturation.toFixed(1);
       document.getElementById("ditherScale").value = settings.ditherScale;
       document.getElementById("ditherScaleVal").textContent = settings.ditherScale.toFixed(2);
       document.getElementById("contrast").value = settings.contrast;
       document.getElementById("contrastVal").textContent = settings.contrast.toFixed(1);
       document.getElementById("greyLevels").value = settings.greyLevels;
       document.getElementById("greyLevelsVal").textContent = Math.floor(settings.greyLevels).toString();
+      document.getElementById("invert").checked = settings.invert;
       document.getElementById("mouseEnabled").checked = settings.mouseEnabled;
       document.getElementById("mouseRadius").value = settings.mouseRadius;
       document.getElementById("mouseRadiusVal").textContent = Math.floor(settings.mouseRadius).toString();
@@ -342,12 +305,12 @@
 
     // Save current settings as defaults
     document.getElementById("saveDefaults").onclick = () => {
-      localStorage.setItem('cloudDitherGradientSettings', JSON.stringify(settings));
+      localStorage.setItem('cloudDitherSettings', JSON.stringify(settings));
     };
 
     // Reset to original defaults
     document.getElementById("resetDefaults").onclick = () => {
-      localStorage.removeItem('cloudDitherGradientSettings');
+      localStorage.removeItem('cloudDitherSettings');
       Object.assign(settings, defaultSettings);
       updateUIFromSettings();
     };
@@ -444,64 +407,6 @@
 
     const bayerNorm = bayer8x8.map(row => row.map(v => v / 64));
 
-    // Color interpolation with gradient
-    const getGradientColor = (u, v, brightness) => {
-      const rad = settings.gradientAngle * Math.PI / 180;
-      const cx = imgSize / 2, cy = imgSize / 2;
-      const dx = v - cx, dy = u - cy;
-
-      // Project onto gradient direction
-      const proj = (dx * Math.cos(rad) + dy * Math.sin(rad)) / imgSize + 0.5;
-      const t = Math.max(0, Math.min(1, proj));
-
-      // Shift colors over time/setting
-      const shift = settings.colorShift;
-      const t1 = (t + shift) % 1;
-      const t2 = (t + shift + 0.5) % 1;
-
-      // Blend between two gradient pairs based on position
-      // Gradient 1: Pink -> Yellow (from your CSS)
-      // Gradient 2: Purple -> Cyan
-      const c1a = gradientColors[0]; // Pink
-      const c1b = gradientColors[1]; // Yellow
-      const c2a = gradientColors[2]; // Purple
-      const c2b = gradientColors[3]; // Cyan
-
-      // Interpolate within each gradient
-      const lerp = (a, b, t) => a + (b - a) * t;
-
-      const g1r = lerp(c1a.r, c1b.r, t1);
-      const g1g = lerp(c1a.g, c1b.g, t1);
-      const g1b = lerp(c1a.b, c1b.b, t1);
-
-      const g2r = lerp(c2a.r, c2b.r, t2);
-      const g2g = lerp(c2a.g, c2b.g, t2);
-      const g2b = lerp(c2a.b, c2b.b, t2);
-
-      // Blend the two gradients
-      const blendT = (Math.sin(t * Math.PI * 2) + 1) / 2;
-      let r = lerp(g1r, g2r, blendT);
-      let g = lerp(g1g, g2g, blendT);
-      let b = lerp(g1b, g2b, blendT);
-
-      // Apply saturation
-      const gray = 0.299 * r + 0.587 * g + 0.114 * b;
-      r = gray + (r - gray) * settings.saturation;
-      g = gray + (g - gray) * settings.saturation;
-      b = gray + (b - gray) * settings.saturation;
-
-      // Apply brightness
-      r = r * brightness;
-      g = g * brightness;
-      b = b * brightness;
-
-      return {
-        r: Math.max(0, Math.min(255, Math.round(r))),
-        g: Math.max(0, Math.min(255, Math.round(g))),
-        b: Math.max(0, Math.min(255, Math.round(b)))
-      };
-    };
-
     let offsetX = 0, offsetY = 0, zOffset = 0;
     let lastTime = 0;
 
@@ -535,9 +440,10 @@
 
           // Pure black for empty space (no dithering dots)
           if (densityAdjusted === 0) {
-            image.data[j] = 0;
-            image.data[j + 1] = 0;
-            image.data[j + 2] = 0;
+            const color = settings.invert ? 255 : 0;
+            image.data[j] = color;
+            image.data[j + 1] = color;
+            image.data[j + 2] = color;
             continue;
           }
 
@@ -577,7 +483,7 @@
           const bv = Math.floor(v / scale) % 8;
           const threshold = bayerNorm[bu][bv];
 
-          // Multi-level dithering for color gradations
+          // Multi-level dithering for grey gradations
           const levels = settings.greyLevels;
           const levelBrightness = brightness * (levels - 1);
           const lowLevel = Math.floor(levelBrightness);
@@ -585,14 +491,13 @@
           const remainder = levelBrightness - lowLevel;
 
           const chosenLevel = remainder > threshold ? highLevel : lowLevel;
-          const finalBrightness = chosenLevel / (levels - 1);
+          let color = Math.round(chosenLevel * 255 / (levels - 1));
 
-          // Get gradient color at this position
-          const color = getGradientColor(u, v, finalBrightness);
+          if (settings.invert) color = 255 - color;
 
-          image.data[j] = color.r;
-          image.data[j + 1] = color.g;
-          image.data[j + 2] = color.b;
+          image.data[j] = color;
+          image.data[j + 1] = color;
+          image.data[j + 2] = color;
         }
       }
     };
