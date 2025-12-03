@@ -71,7 +71,12 @@
       <input type="range" id="evolve" min="0" max="0.2" step="0.005" value="0.1" style="width: 100%; margin-top: 4px;">
     </label>
 
-    <div style="font-weight: 500; margin: 16px 0 8px; font-size: 11px; color: #888; text-transform: uppercase;">Gradient</div>
+    <div style="font-weight: 500; margin: 16px 0 8px; font-size: 11px; color: #888; text-transform: uppercase;">Color</div>
+
+    <label style="display: block; margin-bottom: 12px;">
+      <input type="checkbox" id="useColor" style="margin-right: 8px;" checked>
+      Use gradient colors
+    </label>
 
     <label style="display: block; margin-bottom: 12px;">
       <span style="display: flex; justify-content: space-between;">
@@ -185,6 +190,81 @@
     ">Hide Panel (H)</button>
   </div>
 
+  <!-- Profiles Panel -->
+  <div id="profilesPanel" style="
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    background: rgba(0,0,0,0.85);
+    border: 1px solid #333;
+    border-radius: 8px;
+    padding: 16px;
+    font-family: -apple-system, sans-serif;
+    font-size: 12px;
+    color: #fff;
+    min-width: 200px;
+    z-index: 100;
+  ">
+    <div style="font-weight: 600; margin-bottom: 12px; font-size: 14px;">Profiles</div>
+
+    <div style="margin-bottom: 8px;">
+      <select id="profileSelect" style="
+        width: 100%;
+        padding: 8px;
+        background: #222;
+        border: 1px solid #444;
+        border-radius: 4px;
+        color: #fff;
+        cursor: pointer;
+      ">
+        <option value="">-- Select Profile --</option>
+      </select>
+    </div>
+
+    <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+      <input type="text" id="profileName" placeholder="Profile name" style="
+        flex: 1;
+        padding: 8px;
+        background: #222;
+        border: 1px solid #444;
+        border-radius: 4px;
+        color: #fff;
+      ">
+    </div>
+
+    <button id="saveProfile" style="
+      width: 100%;
+      padding: 8px;
+      background: #2a5a2a;
+      border: none;
+      border-radius: 4px;
+      color: #fff;
+      cursor: pointer;
+      margin-bottom: 8px;
+    ">Save Profile</button>
+
+    <button id="deleteProfile" style="
+      width: 100%;
+      padding: 8px;
+      background: #5a2a2a;
+      border: none;
+      border-radius: 4px;
+      color: #fff;
+      cursor: pointer;
+    ">Delete Selected</button>
+
+    <button id="toggleProfilesPanel" style="
+      width: 100%;
+      padding: 8px;
+      background: #333;
+      border: none;
+      border-radius: 4px;
+      color: #fff;
+      cursor: pointer;
+      margin-top: 8px;
+    ">Hide (P)</button>
+  </div>
+
   <script>
     const canvas = document.getElementById("canvas");
     const ctx = canvas.getContext("2d");
@@ -213,6 +293,7 @@
       gradientAngle: 263,
       colorShift: 0,
       saturation: 1,
+      useColor: true,
       mouseEnabled: true,
       mouseRadius: 150,
       mouseSoftness: 0.5,
@@ -234,6 +315,36 @@
     };
 
     const settings = loadSettings();
+
+    // Profile management
+    const loadProfiles = () => {
+      const saved = localStorage.getItem('cloudDitherProfiles');
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch (e) {
+          return {};
+        }
+      }
+      return {};
+    };
+
+    const saveProfiles = (profiles) => {
+      localStorage.setItem('cloudDitherProfiles', JSON.stringify(profiles));
+    };
+
+    let profiles = loadProfiles();
+
+    const updateProfileSelect = () => {
+      const select = document.getElementById('profileSelect');
+      select.innerHTML = '<option value="">-- Select Profile --</option>';
+      Object.keys(profiles).sort().forEach(name => {
+        const option = document.createElement('option');
+        option.value = name;
+        option.textContent = name;
+        select.appendChild(option);
+      });
+    };
 
     // Mouse position with easing
     let mouseX = -1000, mouseY = -1000;
@@ -292,6 +403,9 @@
     bindSlider("contrast", "contrast", "contrastVal");
     bindSlider("greyLevels", "greyLevels", "greyLevelsVal", v => Math.floor(v).toString());
 
+    document.getElementById("useColor").onchange = (e) => {
+      settings.useColor = e.target.checked;
+    };
     document.getElementById("mouseEnabled").onchange = (e) => {
       settings.mouseEnabled = e.target.checked;
     };
@@ -320,6 +434,7 @@
       document.getElementById("colorShiftVal").textContent = settings.colorShift.toFixed(2);
       document.getElementById("saturation").value = settings.saturation;
       document.getElementById("saturationVal").textContent = settings.saturation.toFixed(1);
+      document.getElementById("useColor").checked = settings.useColor;
       document.getElementById("ditherScale").value = settings.ditherScale;
       document.getElementById("ditherScaleVal").textContent = settings.ditherScale.toFixed(2);
       document.getElementById("contrast").value = settings.contrast;
@@ -339,6 +454,45 @@
 
     // Initialize UI from loaded settings
     updateUIFromSettings();
+    updateProfileSelect();
+
+    // Profile buttons
+    document.getElementById("saveProfile").onclick = (e) => {
+      e.preventDefault();
+      const nameInput = document.getElementById('profileName');
+      const name = nameInput.value.trim();
+      if (!name) {
+        alert('Please enter a profile name');
+        return;
+      }
+      profiles[name] = { ...settings };
+      saveProfiles(profiles);
+      updateProfileSelect();
+      document.getElementById('profileSelect').value = name;
+      nameInput.value = '';
+    };
+
+    // Load profile on select change
+    document.getElementById("profileSelect").onchange = (e) => {
+      const name = e.target.value;
+      if (name && profiles[name]) {
+        Object.assign(settings, profiles[name]);
+        updateUIFromSettings();
+      }
+    };
+
+    document.getElementById("deleteProfile").onclick = () => {
+      const name = document.getElementById('profileSelect').value;
+      if (!name || !profiles[name]) {
+        alert('Please select a profile to delete');
+        return;
+      }
+      if (confirm(`Delete profile "${name}"?`)) {
+        delete profiles[name];
+        saveProfiles(profiles);
+        updateProfileSelect();
+      }
+    };
 
     // Save current settings as defaults
     document.getElementById("saveDefaults").onclick = () => {
@@ -358,8 +512,20 @@
       controlsPanel.style.display = panelVisible ? "block" : "none";
     };
     toggleBtn.onclick = togglePanel;
+
+    const profilesPanel = document.getElementById("profilesPanel");
+    let profilesPanelVisible = true;
+    const toggleProfilesPanel = () => {
+      profilesPanelVisible = !profilesPanelVisible;
+      profilesPanel.style.display = profilesPanelVisible ? "block" : "none";
+    };
+    document.getElementById("toggleProfilesPanel").onclick = toggleProfilesPanel;
+
     document.addEventListener("keydown", e => {
+      // Don't trigger shortcuts when typing in input fields
+      if (e.target.tagName === 'INPUT') return;
       if (e.key === "h" || e.key === "H") togglePanel();
+      if (e.key === "p" || e.key === "P") toggleProfilesPanel();
     });
 
     // size of canvas
@@ -587,12 +753,19 @@
           const chosenLevel = remainder > threshold ? highLevel : lowLevel;
           const finalBrightness = chosenLevel / (levels - 1);
 
-          // Get gradient color at this position
-          const color = getGradientColor(u, v, finalBrightness);
-
-          image.data[j] = color.r;
-          image.data[j + 1] = color.g;
-          image.data[j + 2] = color.b;
+          if (settings.useColor) {
+            // Get gradient color at this position
+            const color = getGradientColor(u, v, finalBrightness);
+            image.data[j] = color.r;
+            image.data[j + 1] = color.g;
+            image.data[j + 2] = color.b;
+          } else {
+            // Greyscale
+            const grey = Math.round(finalBrightness * 255);
+            image.data[j] = grey;
+            image.data[j + 1] = grey;
+            image.data[j + 2] = grey;
+          }
         }
       }
     };
