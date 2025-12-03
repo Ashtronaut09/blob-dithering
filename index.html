@@ -253,6 +253,29 @@
       cursor: pointer;
     ">Delete Selected</button>
 
+    <div style="font-weight: 500; margin: 16px 0 8px; font-size: 11px; color: #888; text-transform: uppercase;">Share</div>
+
+    <button id="copyProfile" style="
+      width: 100%;
+      padding: 8px;
+      background: #4a4a6a;
+      border: none;
+      border-radius: 4px;
+      color: #fff;
+      cursor: pointer;
+      margin-bottom: 8px;
+    ">Copy Current Settings</button>
+
+    <button id="pasteProfile" style="
+      width: 100%;
+      padding: 8px;
+      background: #6a4a4a;
+      border: none;
+      border-radius: 4px;
+      color: #fff;
+      cursor: pointer;
+    ">Paste Settings</button>
+
     <button id="toggleProfilesPanel" style="
       width: 100%;
       padding: 8px;
@@ -491,6 +514,56 @@
         delete profiles[name];
         saveProfiles(profiles);
         updateProfileSelect();
+      }
+    };
+
+    // Copy current settings to clipboard
+    document.getElementById("copyProfile").onclick = async () => {
+      const data = JSON.stringify(settings, null, 2);
+      try {
+        await navigator.clipboard.writeText(data);
+        alert('Settings copied to clipboard!');
+      } catch (err) {
+        // Fallback for older browsers
+        const textarea = document.createElement('textarea');
+        textarea.value = data;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        alert('Settings copied to clipboard!');
+      }
+    };
+
+    // Paste settings from clipboard
+    document.getElementById("pasteProfile").onclick = async () => {
+      try {
+        const text = await navigator.clipboard.readText();
+        const parsed = JSON.parse(text);
+        // Validate it has expected settings
+        if (typeof parsed.gamma === 'number' && typeof parsed.speed === 'number') {
+          Object.assign(settings, parsed);
+          updateUIFromSettings();
+          alert('Settings loaded from clipboard!');
+        } else {
+          alert('Invalid settings format');
+        }
+      } catch (err) {
+        const text = prompt('Paste settings JSON:');
+        if (text) {
+          try {
+            const parsed = JSON.parse(text);
+            if (typeof parsed.gamma === 'number' && typeof parsed.speed === 'number') {
+              Object.assign(settings, parsed);
+              updateUIFromSettings();
+              alert('Settings loaded!');
+            } else {
+              alert('Invalid settings format');
+            }
+          } catch (e) {
+            alert('Invalid JSON format');
+          }
+        }
       }
     };
 
